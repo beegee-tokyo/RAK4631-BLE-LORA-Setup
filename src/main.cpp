@@ -163,8 +163,6 @@ void loop(void)
 	{
 		if ((millis() - last_send) > g_lorawan_settings.send_repeat_time)
 		{
-			g_task_event_type &= N_STATUS;
-
 			last_send = millis();
 			// Send example data
 			// Prepare payload
