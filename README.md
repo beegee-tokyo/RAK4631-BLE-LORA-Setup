@@ -33,6 +33,48 @@ The different parts need to be initialized in **`setup()`**
 	// Init BLE
 	init_ble();
 ```
+In the **`loop()`** it is required to add handlers for the different events
+```cpp
+	// BLE UART event (AT commands)
+	if ((g_task_event_type & BLE_DATA) == BLE_DATA)
+	{
+		g_task_event_type &= N_BLE_DATA;
+		// Send it to AT command parser
+		while (g_ble_uart.available() > 0)
+		{
+			at_serial_input(uint8_t(g_ble_uart.read()));
+			delay(5);
+		}
+		at_serial_input(uint8_t('\n'));
+	}
+
+	// BLE config characteristic received
+	if ((g_task_event_type & BLE_CONFIG) == BLE_CONFIG)
+	{
+		g_task_event_type &= N_BLE_CONFIG;
+		APP_LOG("LOOP", "Config received over BLE");
+		delay(100);
+
+		// Inform connected device about new settings
+		g_lora_data.write((void *)&g_lorawan_settings, sizeof(s_lorawan_settings));
+		g_lora_data.notify((void *)&g_lorawan_settings, sizeof(s_lorawan_settings));
+	}
+
+	// Serial input event (AT commands)
+	if ((g_task_event_type & AT_CMD) == AT_CMD)
+	{
+		g_task_event_type &= N_AT_CMD;
+		while (Serial.available() > 0)
+		{
+			at_serial_input(uint8_t(Serial.read()));
+			delay(5);
+		}
+	}
+```
+**`g_task_event_type`** is set in the BLE callbacks (UART and custom characteristic) and in the USB RX callback.
+These three events must be handled in the **`loop()`**. 
+
+The solution in this example code is not optimized for low power consumption. Usually I would stop the loop and wait for a semaphore that signals one of these events, then handle the event. An implementation of semaphores can be found in the [WisBlock-API-V2](https://github.com/beegee-tokyo/WisBlock-API-V2) library.
 
 It is recommended to keep [flash-nrf52.cpp](./flash-nrf52.cpp), [ble-nrf52.cpp](./ble-nrf52.cpp), [at_cmd.cpp](./at_cmd.cpp), [lora.cpp](./lora.cpp) and [lorawan.cpp](./lorawan.cpp) unchanged and build your code around this example.    
 
